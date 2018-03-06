@@ -26,10 +26,13 @@ Heap_Seg *freelist_head;						//Head of the first heap free list entry
 
 #define segment_end(p)	((uchar*)p + sizeof(Heap_Seg) + p->size)
 
-/*Implement this function properly to retrieve the current process' stack pointer, if you want to prevent the heap from smashing into the stack*/
-static void* get_current_sp()
+/*Implement this function properly if you want to prevent the heap from smashing into the stack.
+This function is called by grow_malloc_break(), and it passes a new malloc break location (end of heap) for testing.
+If this new break location would smash into the stack (or violates it in any ways), return 0. 
+Return 1 if no issues will arise*/
+static int check_stack_integrity(void* new_break)
 {
-	return malloc_heap_end;
+	return 1;
 }
 
 
@@ -66,6 +69,26 @@ static inline void write_seg_header(void* seg_header, size_t len, Heap_Seg* next
 	new_entry->size = len;
 	new_entry->next = next;
 }
+
+static void* grow_malloc_break(size_t amount)			//Similar to sbrk() in unix
+{
+	uchar* new_break = malloc_break - amount;
+	
+	if(new_break < malloc_heap_end || new_break > malloc_heap_start || !check_stack_integrity(new_break))
+	{
+		printf("Cannot continue. Allocation will exceed heap or smash into stack.\n");
+		return NULL;
+	}	
+	malloc_break = new_break;
+	
+	return malloc_break;
+}
+
+void* get_malloc_break()			//Similar to brk() in unix
+{
+	return malloc_break;
+}
+
 
 
 /************************************************************************/
@@ -178,8 +201,6 @@ void* my_malloc(size_t len)
 		else
 			freelist_head = exact_piece->next;	
 
-		printf("Found exact piece of size %zu at %p\n", len, retaddr);
-		printf("Allocated %zu bytes. Start: %p\n", exact_piece->size, retaddr);
 		return retaddr;
 	}
 	
@@ -189,9 +210,7 @@ void* my_malloc(size_t len)
 	/************************************************/
 
 	if(next_smallest_piece)
-	{
-		printf("Using a piece of size %zu at %p\n", next_smallest_piece->size, next_smallest_piece);
-		
+	{	
 		//Shrink the size of the original segment to accomodate the requested lengths and a new seg header
 		next_smallest_piece->size -= len + sizeof(Heap_Seg);
 		
@@ -202,9 +221,6 @@ void* my_malloc(size_t len)
 		//Write a new allocation entry for the new splitted segment to be returned. 
 		//The shrunken free piece is still at its original location (RIGHT side of the splitted/allocated piece)
 		write_seg_header(retaddr - sizeof(Heap_Seg), len, NULL);
-		printf("New allocated piece at %p, %zu bytes\n", retaddr, len);
-		printf("Split a new free piece at %p. Size: %zu, Next: %p\n", next_smallest_piece, next_smallest_piece->size, next_smallest_piece->next);
-		
 		return retaddr;
 	}
 	
@@ -220,21 +236,11 @@ void* my_malloc(size_t len)
 	else												//No existing free pieces available on the heap
 		retaddr = malloc_break - len;
 
-	
 	//Allocate additional heap space needed for the requested length and a new header
-	new_break = malloc_break - (len + sizeof(Heap_Seg));	
-	if(new_break < malloc_heap_end || new_break < (uchar*)get_current_sp())
-	{
-		printf("Cannot continue. Allocation will exceed heap or smash into stack.\n");
-		return NULL;
-	}	
-	malloc_break = new_break;
-	printf("Malloc Break increased by: %zu bytes. New break at %p\n", len + sizeof(Heap_Seg), malloc_break);
+	grow_malloc_break(len + sizeof(Heap_Seg));
 	
 	//Write an allocation entry for the segment to be returned
 	write_seg_header(retaddr - sizeof(Heap_Seg), len, NULL);
-	printf("Allocated piece at %p, %zu bytes\n", retaddr, len);
-	
 	return retaddr;
 }
 
@@ -289,8 +295,6 @@ void my_free(void *p)
 	if(!pointer_is_valid(p))
 		return;
 	
-	printf("(FREEING %p) P_size: %zu, P_next: %p\n", p, p_entry->size, p_entry->next);
-	
 	/************************************************/
 	/*		Step 1: Freeing the requested piece 	*/
 	/************************************************/
@@ -330,7 +334,6 @@ void my_free(void *p)
 		p_entry_prev = closest_left;
 	}
 	
-	printf("New FL at %p, size: %zu, next: %p\n", (uchar*)p_entry, p_entry->size, p_entry->next);
 	
 	
 	/************************************************/
@@ -338,13 +341,9 @@ void my_free(void *p)
 	/************************************************/
 	
 	if(closest_left && segment_end(p_entry) == (uchar*)closest_left)
-	{
-		printf("Found left adjacent piece at %p. Size: %zu, Next: %p\n", (uchar*)closest_left, closest_left->size, closest_left->next);
-		
+	{	
+		//Update new header, and erase the old one
 		p_entry->size += closest_left->size + sizeof(Heap_Seg);
-		printf("Merged! New Size: %zu, Next: %p\n", p_entry->size, p_entry->next);
-		
-		//Erase old header
 		write_seg_header(closest_left, 0, NULL);
 		
 		//Update freelist
@@ -364,12 +363,10 @@ void my_free(void *p)
 	
 	if(closest_right && segment_end(closest_right) == (uchar*)p_entry)
 	{
-		printf("Found right adjacent piece at %p. Size: %zu, Next: %p\n", (uchar*)closest_right, closest_right->size, closest_right->next);
-		
+		//Update new header, and erase the old one
 		closest_right->size += p_entry->size + sizeof(Heap_Seg);
 		write_seg_header(p_entry, 0, NULL);
 		p_entry = closest_right;
-		printf("Merged! New Size: %zu, Next: %p\n", p_entry->size, p_entry->next);
 		
 		//Update freelist
 		if(p_entry_prev)
@@ -385,10 +382,8 @@ void my_free(void *p)
 	
 	if((uchar*)p_entry == malloc_break && !p_entry->next)
 	{
-		//Reduce the break to where the tail piece ends
+		//Reduce the break to where the tail piece ends, and erase the old header
 		malloc_break = segment_end(p_entry);
-		printf("New Break at %p\n", malloc_break);
-		
 		write_seg_header(p_entry, 0, NULL);
 		
 		//Update freelist
@@ -419,6 +414,7 @@ void* my_realloc(void *p, size_t len)
 	Heap_Seg *old_entry = p_entry;
 	
 	int size_diff;
+	uchar* new_break;
 	uchar* retaddr = NULL;
 	
 	Heap_Seg *current_piece = NULL;
@@ -427,7 +423,6 @@ void* my_realloc(void *p, size_t len)
 	
 	if(!pointer_is_valid(p))
 		return NULL;
-	printf("(REALLOC %p) P_size: %zu, P_next: %p\n", p, p_entry->size, p_entry->next);
 	
 	
 	/****************************************/
@@ -445,20 +440,14 @@ void* my_realloc(void *p, size_t len)
 		
 		//Don't shrink if the size difference isn't big enough to insert a new segment header
 		if(size_diff <= sizeof(Heap_Seg))
-		{
-			printf("Size difference %d is too insignificant, skip shrinking...\n", size_diff);
 			return p;
-		}
-		
-		retaddr = (uchar*)p + size_diff;
 		
 		//Write a new segment entry above the requested length
+		retaddr = (uchar*)p + size_diff;
 		write_seg_header(retaddr - sizeof(Heap_Seg), len, NULL);
-		printf("Shrunk segment at %p, %zu bytes\n", retaddr, len);
 		
 		//Rewrite the old segment header and mark it as free
 		old_entry->size = size_diff - sizeof(Heap_Seg);
-		printf("Creating a free entry at %p, size: %zu\n", old_entry, old_entry->size);
 		my_free(p);	
 		
 		return retaddr;
@@ -485,21 +474,16 @@ void* my_realloc(void *p, size_t len)
 	{	
 		//Merging with top piece if it fits exactly
 		if(closest_right->size + sizeof(Heap_Seg) == size_diff)
-		{
 			retaddr = (uchar*)closest_right + sizeof(Heap_Seg);
-			printf("Exact Merge!\n");
-		}
 		
 		//Merging with top piece yields excess free spaces
 		else if(closest_right->size >= size_diff)
 		{
 			retaddr = (uchar*)p - size_diff;
 			
-			//Also update the free piece's original entry, if it has more free space still
+			//Update the free piece's original entry and reduce its free size
 			if(closest_right->size > size_diff)
 				closest_right->size -= size_diff;
-			
-			printf("Updated free entry at %p, size: %zu, next: %p\n", closest_right-sizeof(Heap_Seg), closest_right->size, closest_right->next);
 		}
 	}
 	
@@ -508,17 +492,15 @@ void* my_realloc(void *p, size_t len)
 	{
 		//If the requested is at the malloc break, simply expand it to fulfil the requested length
 		retaddr = (uchar*)p - size_diff;
-		
-		malloc_break -= size_diff;		
+		grow_malloc_break(size_diff);	
 		p_entry = (Heap_Seg*)malloc_break;
-		printf("New break at %p\n", malloc_break);
 	}
-
+	
+	
 	if(retaddr)
 	{
 		//Write a new segment entry above the requested length
-		write_seg_header(p_entry, len, NULL);
-		printf("Expanded segment at %p, %zu bytes\n", retaddr, len);	
+		write_seg_header(p_entry, len, NULL);	
 			
 		//Wipe the old seg entry, as it's now part of the allocated memory
 		old_entry->size = 0;
@@ -532,7 +514,7 @@ void* my_realloc(void *p, size_t len)
 	/*		New Allocation for growth		*/
 	/****************************************/
 	
-	printf("A new segment will be created for reallocation..\n");
+	//Because it's not possible to expand the current piece in-place, we must use malloc to create a new larger piece
 	
 	retaddr = my_malloc(len);
 	if(!retaddr) 

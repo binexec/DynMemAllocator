@@ -3,27 +3,23 @@
 void* malloc_dbg(size_t len)
 {
 	void *retval = my_malloc(len);
-	//check_alignment();
 	return retval;
 }
 
 void* calloc_dbg(size_t nitems, size_t size)
 {
 	void *retval = my_calloc(nitems, size);
-	//check_alignment();
 	return retval;
 }
 
 void free_dbg(void *p)
 {
 	my_free(p);
-	//check_alignment();
 }
 
 void* realloc_dbg(void *ptr, size_t len)
 {
 	void *retval = my_realloc(ptr, len);
-	//check_alignment();
 	return retval;
 }
 
