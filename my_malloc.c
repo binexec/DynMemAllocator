@@ -10,11 +10,11 @@ This implementation of malloc saves heap space by minimizing the segment header 
 
 typedef unsigned char uchar;
 
-uchar* malloc_heap_start;						//Start of the dynamic memory heap
-uchar* malloc_heap_end;							//Absolute end of the memory segment for the heap; cannot allocate further than this
+static uchar* malloc_heap_start;						//Start of the dynamic memory heap
+static uchar* malloc_heap_end;							//Absolute end of the memory segment for the heap; cannot allocate further than this
 
-uchar* malloc_break;							//Also referred as "brk", the current end for the allocated heap	
-Heap_Seg *freelist_head;						//Head of the first heap free list entry
+static uchar* malloc_break;							//Also referred as "brk", the current end for the allocated heap	
+static Heap_Seg *freelist_head;						//Head of the first heap free list entry
 
 
 
@@ -153,11 +153,9 @@ void* my_malloc(size_t len)
 	
 	Heap_Seg *current_piece = NULL, *previous_piece = NULL;
 	Heap_Seg *exact_piece = NULL, *exact_piece_prev = NULL;
-	Heap_Seg *next_smallest_piece = NULL, *next_smallest_piece_prev = NULL;
+	Heap_Seg *next_smallest_piece = NULL;
 	
 	uchar* retaddr = NULL;
-	Heap_Seg *new_entry;
-	uchar* new_break = NULL;
 
 	/*If stack has not yet been initialized, skip to step 3*/
 
@@ -178,12 +176,8 @@ void* my_malloc(size_t len)
 		}
 		
 		//Record the smallest piece of memory available (of at least length "len"), if exact piece is not yet found
-		if(current_piece->size > len + sizeof(Heap_Seg) && 
-			(!next_smallest_piece || current_piece->size < next_smallest_piece->size))
-		{
+		if(current_piece->size > len + sizeof(Heap_Seg) && (!next_smallest_piece || current_piece->size < next_smallest_piece->size))
 			next_smallest_piece = current_piece;
-			next_smallest_piece_prev = previous_piece;
-		}
 	}
 
 	
@@ -410,7 +404,6 @@ void my_free(void *p)
 void* my_realloc(void *p, size_t len)
 {
 	Heap_Seg *p_entry = p - sizeof(Heap_Seg);
-	Heap_Seg *p_entry_prev = NULL;
 	Heap_Seg *old_entry = p_entry;
 	
 	int size_diff;
