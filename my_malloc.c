@@ -188,12 +188,11 @@ void* my_malloc(size_t len)
 			
 		//Disconnect the current piece from the fl chain
 		//If the piece used have no previous free piece, that means this is also freelist_head
-		exact_piece->next = NULL;
-		
 		if(exact_piece_prev)
 			exact_piece_prev->next = exact_piece->next;
 		else
 			freelist_head = exact_piece->next;	
+		exact_piece->next = NULL;
 
 		return retaddr;
 	}
@@ -231,7 +230,8 @@ void* my_malloc(size_t len)
 		retaddr = malloc_break - len;
 
 	//Allocate additional heap space needed for the requested length and a new header
-	grow_malloc_break(len + sizeof(Heap_Seg));
+	if(!grow_malloc_break(len + sizeof(Heap_Seg)))
+		return NULL;
 	
 	//Write an allocation entry for the segment to be returned
 	write_seg_header(retaddr - sizeof(Heap_Seg), len, NULL);
@@ -485,7 +485,10 @@ void* my_realloc(void *p, size_t len)
 	{
 		//If the requested is at the malloc break, simply expand it to fulfil the requested length
 		retaddr = (uchar*)p - size_diff;
-		grow_malloc_break(size_diff);	
+		
+		if(!grow_malloc_break(len + sizeof(Heap_Seg)))
+			return NULL;
+	
 		p_entry = (Heap_Seg*)malloc_break;
 	}
 	
