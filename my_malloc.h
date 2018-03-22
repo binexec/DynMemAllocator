@@ -1,10 +1,13 @@
-#include <strings.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <string.h>
+#include <stdio.h>
 
 #ifndef NULL
 #define NULL 0
 #endif
+
+
+#define DEBUG
 
 
 /*
