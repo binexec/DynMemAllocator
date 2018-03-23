@@ -58,7 +58,7 @@ void test_malloc()
 	sprintf(&memory[15], "111222333");
 	printf("%s\n\n", &memory[15]);
 	
-	init_malloc(&memory[1024], &memory[4095]);
+	init_malloc(&memory[4095], &memory[1024]);
 	
 	printf("Allocating \"1234567890abcdef\" (17) onto the heap...\n");
 	str[0] = malloc_dbg(17);
@@ -126,7 +126,7 @@ void test_calloc()
 	sprintf(&memory[15], "111222333");
 	printf("%s\n\n", &memory[15]);
 	
-	init_malloc(&memory[1024], &memory[4095]);
+	init_malloc(&memory[4095], &memory[1024]);
 	
 	printf("Allocating \"1234567890abcdef\" (17) onto the heap...\n");
 	str[0] = calloc_dbg(17, sizeof(char));
@@ -191,40 +191,35 @@ void test_free()
 	printf("%s\n", &memory[15]);
 	
 	
-	init_malloc(&memory[1024], &memory[4095]);
+	init_malloc(&memory[4095], &memory[1024]);
 	
 	
 	printf("Allocating \"1234567890abcdef\" (17) onto the heap...\n");
 	str[0] = malloc_dbg(17);
-	printf("Address: %p\n", str[0]);
 	sprintf(str[0], "1234567890abcdef");
 	printf("%s\n\n", str[0]);
 	
 	printf("Allocating \"qwertyui\" (9) onto the heap...\n");
 	str[1] = malloc_dbg(9);
-	printf("Address: %p\n", str[1]);
 	sprintf(str[1], "qwertyui");
 	printf("%s\n\n", str[1]);
 	
 	printf("Allocating \"hello world!\" (13) onto the heap...\n");
 	str[2] = malloc_dbg(13);
-	printf("Address: %p\n", str[2]);
 	sprintf(str[2], "hello world!");
 	printf("%s\n\n", str[2]);
 	
-	printf("Allocating \"The quick brown fox jumps over the lazy dog\" (64) onto the heap...\n");
+	printf("Allocating \"The quick brown fox jumps over the lazy dog\" (256) onto the heap...\n");
 	str[3] = malloc_dbg(64);
-	printf("Address: %p\n", str[3]);
 	sprintf(str[3], "The quick brown fox jumps over the lazy dog");
 	printf("%s\n\n", str[3]);
 	
-	printf("Allocating \"Sometimes I dream about Cheese\" (65) onto the heap...\n");
+	printf("Allocating \"Sometimes I dream about Cheese\" (137) onto the heap...\n");
 	str[4] = malloc_dbg(65);
-	printf("Address: %p\n", str[4]);
 	sprintf(str[4], "Sometimes I dream about Cheese");
 	printf("%s\n\n", str[4]);
 	
-	printf("Allocating \"GET OFF MY PLANE\" (66) onto the heap...\n");
+	printf("Allocating \"GET OFF MY PLANE\" (32) onto the heap...\n");
 	str[5] = malloc_dbg(66);
 	sprintf(str[5], "GET OFF MY PLANE");
 	printf("%s\n\n", str[5]);
@@ -255,7 +250,6 @@ void test_free()
 	printf("Freeing 5\n");
 	free_dbg(str[5]);
 	printf("\n");
-	
 	
 	//testing merge
 	printf("Freeing 4\n");
@@ -312,7 +306,7 @@ void test_realloc()
 	printf("%s\n", &memory[15]);
 	
 	
-	init_malloc(&memory[1024], &memory[4095]);
+	init_malloc(&memory[4095], &memory[1024]);
 
 	
 	//Testing shrink
