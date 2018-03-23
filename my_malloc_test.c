@@ -371,6 +371,15 @@ void test_realloc()
 	printf("%s\n\n", str[2]);
 	
 	
+	//Testing growth at malloc break
+	printf("******\n");
+	printf("Expanding break piece from (15) to (30)");
+	str[4] = realloc_dbg(str[4], 30);
+	sprintf(str[4], "this is the break piece!");
+	printf("%s\n\n", str[4]);
+	
+	
+	
 	
 	//Testing growth, but new allocation piece is needed
 	printf("******\n");

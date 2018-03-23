@@ -497,9 +497,33 @@ void* my_realloc(void *p, size_t len)
 	
 	
 	/****************************************/
-	/*			Growing In-place			*/
+	/*	Growing In-place, At the break		*/
 	/****************************************/
 
+	/*Scenario: The expanding piece is at the malloc break*/
+	if(segment_end(p_entry) == malloc_break)
+	{
+		if(!grow_malloc_break(size_diff))
+			return NULL;
+		
+		p_entry->size = len;
+		
+		//Wipe the old seg entry, as it's now part of the allocated memory
+		old_entry->size = 0;
+		old_entry->next = NULL;
+		
+		#ifdef DEBUG
+		printf("realloc: Expanding malloc break to %p for growth\n", malloc_break);
+		#endif
+		
+		return p;
+	}
+	
+	
+	/****************************************/
+	/*	Growing In-place, adjacent right	*/
+	/****************************************/
+	
 	//Iterate the freelist and find the closest free piece on the right to p
 	for(current_piece = freelist_head; current_piece; current_piece = current_piece->next)
 	{
@@ -569,24 +593,10 @@ void* my_realloc(void *p, size_t len)
 		}
 	}
 	
-	/*Scenario: The expanding piece is at the malloc break*/
-	if((uchar*)p_entry == malloc_break)
-	{
-		if(!grow_malloc_break(size_diff))
-			return NULL;
-		
-		p_entry->size = len;
-		
-		//Wipe the old seg entry, as it's now part of the allocated memory
-		old_entry->size = 0;
-		old_entry->next = NULL;
-		
-		#ifdef DEBUG
-		printf("realloc: Expanding malloc break to %p for growth\n", malloc_break);
-		#endif
-		
-		return p;
-	}
+	/****************************************/
+	/*	Growing In-place, adjacent left		*/
+	/****************************************/
+	
 
 	
 	/****************************************/
