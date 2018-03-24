@@ -597,7 +597,7 @@ void* my_realloc(void *p, size_t len)
 	retaddr = my_malloc(len);
 	if(!retaddr) 
 		return NULL;
-	memcpy(p, retaddr, p_entry->size);
+	memcpy(retaddr, p, p_entry->size);
 	my_free(p);
 
 	return retaddr;

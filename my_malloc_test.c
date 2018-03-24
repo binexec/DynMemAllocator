@@ -316,7 +316,9 @@ void test_realloc()
 
 	
 	//Testing shrink
-	printf("******\n");
+	printf("\n****************************************\n");
+	printf("\t\t SHRINK\n");
+	printf("****************************************\n\n");
 	
 	printf("Allocating \"1234567890abcdef1234567890abcdef\" (48) onto the heap...\n");
 	str[0] = malloc_dbg(48);
@@ -330,7 +332,9 @@ void test_realloc()
 	
 	
 	//Testing growth at malloc break
-	printf("******\n");
+	printf("\n****************************************\n");
+	printf("\t\tGROWTH AT MALLOC BREAK\n");
+	printf("****************************************\n\n");
 	
 	printf("Allocating \"qwertyuiqwertyuiqwertyui\" (25) onto the heap...\n");
 	str[1] = malloc_dbg(25);
@@ -343,61 +347,123 @@ void test_realloc()
 	printf("%s\n\n", str[1]);
 
 	
-	//Testing growth, when exact amount of free space is right above the current piece
-	printf("******\n");
+	//Testing rightward growth
+	printf("\n****************************************\n");
+	printf("\t\tRIGHTWARD GROWTH\n");
+	printf("****************************************\n\n");
 	
-	printf("Allocating \"hello world!\" (13) onto the heap...\n");
-	str[2] = malloc_dbg(13);
-	sprintf(str[2], "hello world!");
+	printf("Allocating \"helloworldhelloworldhelloworld\" (31) onto the heap...\n");
+	str[2] = malloc_dbg(31);
+	sprintf(str[2], "helloworldhelloworldhelloworld");
 	printf("%s\n\n", str[2]);
 	
-	printf("Allocating \"HELLO WORLD!\" (14) onto the heap...\n");
-	str[3] = malloc_dbg(14);
-	sprintf(str[3], "HELLO WORLD!");
+	printf("Allocating \"HELLOWORLDHELLOWORLDHELLOWORLDHELLOWORLD!\" (64) onto the heap...\n");
+	str[3] = malloc_dbg(64);
+	sprintf(str[3], "HELLOWORLDHELLOWORLDHELLOWORLDHELLOWORLD!");
 	printf("%s\n\n", str[3]);
 	
-	printf("Allocating \"hElLo WoRlD!\" (15) onto the heap...\n");
-	str[4] = malloc_dbg(15);
-	sprintf(str[4], "hElLo WoRlD!");
+	printf("Allocating \"hElLoWoRlDhElLoWoRlDhElLoWoRlD!!\" (33) onto the heap...\n");
+	str[4] = malloc_dbg(33);
+	sprintf(str[4], "hElLoWoRlDhElLoWoRlDhElLoWoRlD!!");
 	printf("%s\n\n", str[4]);
 	
-	printf("Freeing 3 (14)...\n");
+	printf("Freeing 3 (32)...\n");
 	free_dbg(str[3]);
 	printf("\n");
 	
-	printf("Expanding from (25) to (%zu) as \"helloworld~HELLOWORLD~hElLo\"...\n", 13+14+sizeof(Heap_Seg));
-	str[2] = realloc_dbg(str[2], 13+14+sizeof(Heap_Seg));
-	sprintf(str[2], "helloworld~HELLOWORLD~hElLo");
+	printf("Expanding from (31) to (41) as \"this is testing rightward growth!\"...\n");
+	str[2] = realloc_dbg(str[2], 41);
+	sprintf(str[2], "this is testing rightward growth!");
 	printf("%s\n\n", str[2]);
 	
 	
-	//Testing growth at malloc break
-	printf("******\n");
-	printf("Expanding break piece from (15) to (30)");
-	str[4] = realloc_dbg(str[4], 30);
-	sprintf(str[4], "this is the break piece!");
+	//Testing rightward growth again
+	printf("\n****************************************\n");
+	printf("\t\tRIGHTWARD GROWTH 2\n");
+	printf("****************************************\n\n");
+	
+	printf("Expanding from (31) to (41) as \"this is testing rightward growth!\"...\n");
+	str[2] = realloc_dbg(str[2], 55);
+	sprintf(str[2], "this is testing rightward growth once again!");
+	printf("%s\n\n", str[2]);
+	
+	
+	//Testing rightward growth of exact size
+	printf("\n****************************************\n");
+	printf("\t\tRIGHTWARD GROWTH EXACT\n");
+	printf("****************************************\n\n");
+	
+	printf("Expanding from (31) to (%zu) as \"this is testing rightward growth EXACT!\"...\n", 55+40+sizeof(Heap_Seg));
+	str[2] = realloc_dbg(str[2], 55+40+sizeof(Heap_Seg));
+	sprintf(str[2], "this is testing rightward growth EXACT!");
+	printf("%s\n\n", str[2]);
+	
+
+
+	//Testing leftward expansion
+	printf("\n****************************************\n");
+	printf("\t\tLEFTWARD GROWTH\n");
+	printf("****************************************\n\n");
+	
+	printf("Allocating \"hElLo WoRlD!\" (15) onto the heap...\n");
+	str[5] = malloc_dbg(15);
+	sprintf(str[5], "hElLo WoRlD!");
+	printf("%s\n\n", str[5]);
+	
+	printf("Freeing 2 (%zu)...\n", 55+40+sizeof(Heap_Seg));
+	free_dbg(str[2]);
+	printf("\n");
+	
+	printf("Expanding piece from (33) to (40)\n");
+	str[4] = realloc_dbg(str[4], 40);
+	sprintf(str[4], "This piece tests leftwards expansion!!!");
 	printf("%s\n\n", str[4]);
 	
 	
+	//Testing leftward expansion again
+	printf("\n****************************************\n");
+	printf("\t\tLEFTWARD GROWTH 2\n");
+	printf("****************************************\n\n");
+	
+	printf("Expanding piece from (40) to (%zu)\n", 40+18+sizeof(Heap_Seg));
+	str[4] = realloc_dbg(str[4], 40+18+sizeof(Heap_Seg));
+	sprintf(str[4], "This piece tests leftwards expansion once again!!!");
+	printf("%s\n\n", str[4]);
 	
 	
+	//Testing leftward expansion of exact size
+	printf("\n****************************************\n");
+	printf("\t\tLEFTWARD GROWTH EXACT\n");
+	printf("****************************************\n\n");
+	
+	printf("Expanding piece from (40) to (%zu)\n", 74+70+sizeof(Heap_Seg));
+	str[4] = realloc_dbg(str[4], 74+70+sizeof(Heap_Seg));
+	sprintf(str[4], "This piece tests leftwards expansion with exact size!!!");
+	printf("%s\n\n", str[4]);
+	
+
+	
+
 	//Testing growth, but new allocation piece is needed
-	printf("******\n");
+	printf("\n****************************************\n");
+	printf("\t\tGROWTH WITH NEW PIECE\n");
+	printf("****************************************\n\n");
 	
 	printf("Expanding from (%zu) to (48) as \"The quick brown fox jumps over the lazy dog\"...\n", 13+14+sizeof(Heap_Seg));
 	str[0] = realloc_dbg(str[0], 48);
 	sprintf(str[0], "The quick brown fox jumps over the lazy dog");
 	printf("%s\n\n", str[0]);
+	
+
 
 	
-	
-	printf("\n***Testing originals***\n");
+	/*printf("\n***Testing originals***\n");
 	printf("%s\n", &memory[0]);
 	printf("%s\n", &memory[15]);
 	printf("%s\n", str[0]);
 	printf("%s\n", str[1]);
 	printf("%s\n", str[2]);
-	printf("%s\n", str[4]);
+	printf("%s\n", str[4]);*/
 
 }
 
