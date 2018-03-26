@@ -459,6 +459,7 @@ void* my_realloc(void *p, size_t len)
 {
 	Heap_Seg *p_entry = p - sizeof(Heap_Seg);
 	Heap_Seg *old_entry = p_entry;
+	Heap_Seg *new_entry;
 	
 	int size_diff;
 	uchar* new_break;
@@ -567,6 +568,70 @@ void* my_realloc(void *p, size_t len)
 	
 	
 	/****************************************/
+	/*	Growing In-place, adjacent left		*/
+	/****************************************/
+	
+	if(closest_left && segment_end(p_entry) == (uchar*)closest_left)
+	{			
+		//Merging with adjacent left piece if it fits exactly (with the header consumed)
+		if(closest_left->size + sizeof(Heap_Seg) == size_diff)
+		{
+			p_entry->size = len;
+			
+			//Update Freelist chain
+			if(closest_left_prev)
+				closest_left_prev->next = closest_left->next;
+			else
+				freelist_head = closest_left->next;
+
+			//Wipe the old seg entry, as it's now part of the allocated memory
+			closest_left->size = 0;
+			closest_left->next = NULL;
+			
+			#ifdef DEBUG_MY_REALLOC
+			printf("realloc: Merging with adjacent left piece yields exact size. New size %zu at %p\n", p_entry->size, p_entry);
+			#endif
+			
+			return p;
+		}
+		
+		//Merging with adjacent left piece yields excess free spaces (with a new header added)
+		else if(closest_left->size > size_diff)
+		{
+			#ifdef DEBUG_MY_REALLOC
+			printf("realloc: Planning to split adjacent left piece of size %zu at %p for merging\n", closest_left->size, closest_left);
+			#endif
+			
+			p_entry->size = len;
+			
+			//Write a free segment entry for the left over free space
+			new_entry = (Heap_Seg*)segment_end(p_entry);
+			write_seg_header(new_entry, closest_left->size - size_diff, closest_left->next);
+			
+			//Update Freelist chain
+			if(closest_left_prev)
+				closest_left_prev->next = new_entry;
+			else
+				freelist_head = new_entry;
+			
+			//Wipe the old seg entry, as it's now part of the allocated memory
+			if(size_diff > sizeof(Heap_Seg))
+			{
+				closest_left->size = 0;
+				closest_left->next = NULL;
+			}	
+				
+			#ifdef DEBUG_MY_REALLOC
+			printf("realloc: Expanded Piece: size %zu at %p\n", len, p_entry);
+			printf("realloc: Free Piece: size %zu at %p\n", new_entry->size, new_entry);
+			#endif
+			return p;
+		}
+	}
+	
+
+	
+	/****************************************/
 	/*	Growing In-place, adjacent right	*/
 	/****************************************/
 	
@@ -620,15 +685,7 @@ void* my_realloc(void *p, size_t len)
 	}
 	
 
-	
-	
-	/****************************************/
-	/*	Growing In-place, adjacent left		*/
-	/****************************************/
 
-	
-
-	
 	/****************************************/
 	/*		New Allocation for growth		*/
 	/****************************************/

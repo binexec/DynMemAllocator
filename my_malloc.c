@@ -637,8 +637,8 @@ void* my_realloc(void *p, size_t len)
 			return retaddr;
 		}
 		
-		//Merging with adjacent left piece yields excess free spaces (with a new header added)
-		else if(closest_left->size > size_diff + sizeof(Heap_Seg))
+		//Merging with adjacent left piece yields excess free spaces
+		else if(closest_left->size > size_diff)
 		{
 			#ifdef DEBUG_MY_REALLOC
 			printf("realloc: Planning to split adjacent left piece of size %zu at %p for merging\n", closest_left->size, closest_left);

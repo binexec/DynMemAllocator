@@ -399,7 +399,7 @@ void test_realloc()
 	printf("%s\n\n", str[2]);
 	
 
-/*
+
 	//Testing leftward expansion
 	printf("\n****************************************\n");
 	printf("\t\tLEFTWARD GROWTH\n");
@@ -455,7 +455,7 @@ void test_realloc()
 	printf("%s\n\n", str[0]);
 	
 
-*/
+
 	
 	/*printf("\n***Testing originals***\n");
 	printf("%s\n", &memory[0]);
