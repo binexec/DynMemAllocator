@@ -439,7 +439,6 @@ void my_free(void *p)
 void* my_realloc(void *p, size_t len)
 {
 	Heap_Seg *p_entry = p - sizeof(Heap_Seg);
-	Heap_Seg *old_entry = p_entry;
 	Heap_Seg *new_entry = NULL;
 	
 	int size_diff;
@@ -511,10 +510,6 @@ void* my_realloc(void *p, size_t len)
 			return NULL;
 		
 		p_entry->size = len;
-		
-		//Wipe the old seg entry, as it's now part of the allocated memory
-		old_entry->size = 0;
-		old_entry->next = NULL;
 		
 		#ifdef DEBUG_MY_REALLOC
 		printf("realloc: Expanding malloc break to %p for growth\n", malloc_break);
