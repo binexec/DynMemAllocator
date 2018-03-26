@@ -1,5 +1,6 @@
 /*
 Note: malloc_heap_start < malloc_heap_end, since heap grows towards higher addresses
+
 Adding an offset to a memory address will make it go down (shrinking), and subtracting will make it go up (growing).
 
 This implementation of malloc saves heap space by minimizing the segment header (only stores segment size and next pointer), at the cost of runtime (no previous pointer).
@@ -30,6 +31,7 @@ static Heap_Seg *freelist_head;						//Head of the first heap free list entry
 This function is called by grow_malloc_break(), and it passes a new malloc break location (end of heap) for testing.
 If this new break location would smash into the stack (or violates it in any ways), return 0. 
 Return 1 if no issues will arise*/
+
 static int check_stack_integrity(void* new_break)
 {
 	return 1;
@@ -63,18 +65,18 @@ static int pointer_is_valid(void* p)
 }
 
 
-static inline void write_seg_header(void* seg_header, size_t len, Heap_Seg* next)
+static inline void write_seg_header(void* p_entry, size_t len, Heap_Seg* next)
 {
-	Heap_Seg* new_entry =  (Heap_Seg*)seg_header;
-	new_entry->size = len;
-	new_entry->next = next;
+	((Heap_Seg*)p_entry)->size = len;
+	((Heap_Seg*)p_entry)->next = next;
 }
 
-static inline void print_seg_header(void* seg_header)
+
+static inline void print_seg_header(void* p_entry)
 {
-	Heap_Seg* p_entry = (Heap_Seg*)seg_header;
-	printf("header start: %p, size %zu, next %p\n", p_entry, p_entry->size, p_entry->next);
+	printf("header start: %p, size %zu, next %p\n", (Heap_Seg*)p_entry, ((Heap_Seg*)p_entry)->size, ((Heap_Seg*)p_entry)->next);
 }
+
 
 static void* grow_malloc_break(size_t amount)			//Similar to sbrk() in unix
 {
@@ -89,6 +91,7 @@ static void* grow_malloc_break(size_t amount)			//Similar to sbrk() in unix
 	
 	return malloc_break;
 }
+
 
 void* get_malloc_break()			//Similar to brk() in unix
 {
@@ -114,7 +117,7 @@ int init_malloc(uchar* start, uchar* end)
 	malloc_break 		= malloc_heap_start;	
 	freelist_head 		= NULL;
 	
-	#ifdef DEBUG
+	#ifdef DEBUG_MY_MALLOC
 	printf("Heap Start: %p, Heap End: %p\n\n", malloc_heap_start, malloc_heap_end);
 	#endif
 	return 1;
@@ -202,7 +205,7 @@ void* my_malloc(size_t len)
 			freelist_head = exact_piece->next;	
 		exact_piece->next = NULL;
 		
-		#ifdef DEBUG
+		#ifdef DEBUG_MY_MALLOC
 		printf("malloc: Using an exact piece of size %zu at %p\n", len, exact_piece);
 		#endif
 
@@ -216,7 +219,7 @@ void* my_malloc(size_t len)
 
 	if(next_smallest_piece)
 	{	
-		#ifdef DEBUG
+		#ifdef DEBUG_MY_MALLOC
 		printf("malloc: Planning to split a piece of size %zu at %p\n", next_smallest_piece->size, next_smallest_piece);
 		#endif
 		
@@ -232,7 +235,7 @@ void* my_malloc(size_t len)
 		//The shrunken free piece is still at its original location (LEFT side of the splitted/allocated piece)
 		write_seg_header(retaddr - sizeof(Heap_Seg), len, NULL);
 		
-		#ifdef DEBUG
+		#ifdef DEBUG_MY_MALLOC
 		printf("malloc: Piece 1: size %zu at %p\n", len, retaddr - sizeof(Heap_Seg));
 		printf("malloc: Piece 2 (free): size %zu at %p\n", next_smallest_piece->size, next_smallest_piece);
 		#endif
@@ -255,7 +258,7 @@ void* my_malloc(size_t len)
 	//Allocate additional heap space needed for the requested length and a new header
 	if(grow_malloc_break(len + sizeof(Heap_Seg)))
 	{
-		#ifdef DEBUG
+		#ifdef DEBUG_MY_MALLOC
 		printf("malloc: Using a new piece of size %zu at %p; Malloc break at %p\n", len, retaddr, malloc_break);
 		#endif
 		
@@ -318,7 +321,7 @@ void my_free(void *p)
 	if(!pointer_is_valid(p))
 		return;
 	
-	#ifdef DEBUG
+	#ifdef DEBUG_MY_FREE
 	printf("free: Freeing %p of size %zu\n", p_entry, p_entry->size);
 	#endif
 	
@@ -374,7 +377,7 @@ void my_free(void *p)
 		p_entry->next = closest_right->next;
 		write_seg_header(closest_right, 0, NULL);
 		
-		#ifdef DEBUG
+		#ifdef DEBUG_MY_FREE
 		printf("free: Merged with adjacent right piece. New size %zu at %p\n", p_entry->size, p_entry);
 		#endif
 	}
@@ -392,7 +395,7 @@ void my_free(void *p)
 		write_seg_header(p_entry, 0, NULL);
 		p_entry = closest_left;
 		
-		#ifdef DEBUG
+		#ifdef DEBUG_MY_FREE
 		printf("free: Merged with adjacent left piece. New size %zu at %p\n", p_entry->size, p_entry);
 		#endif
 	}
@@ -414,7 +417,7 @@ void my_free(void *p)
 		else
 			freelist_head = NULL;
 		
-		#ifdef DEBUG
+		#ifdef DEBUG_MY_FREE
 		printf("free: Eliminated new free piece by reducing malloc break to %p\n", malloc_break);
 		#endif
 	}
@@ -459,7 +462,7 @@ void* my_realloc(void *p, size_t len)
 	
 	size_diff = len - p_entry->size;
 	
-	#ifdef DEBUG
+	#ifdef DEBUG_MY_REALLOC
 	printf("realloc: Resizing %p, current size %zu. Size difference: %d\n", p_entry, p_entry->size, size_diff);
 	#endif
 	
@@ -473,7 +476,7 @@ void* my_realloc(void *p, size_t len)
 		//Don't shrink if the size difference isn't big enough to insert a new segment header
 		if(size_diff <= sizeof(Heap_Seg))
 		{
-			#ifdef DEBUG
+			#ifdef DEBUG_MY_REALLOC
 			printf("realloc: size difference too insignificant. The piece will not be shrunk.\n");
 			#endif
 			return p;
@@ -485,7 +488,7 @@ void* my_realloc(void *p, size_t len)
 		new_entry = (Heap_Seg*)segment_end(p_entry);
 		write_seg_header(new_entry, size_diff - sizeof(Heap_Seg), NULL);
 		
-		#ifdef DEBUG
+		#ifdef DEBUG_MY_REALLOC
 		printf("realloc: New shrunk piece of size %zu at %p\n", len, p - sizeof(Heap_Seg));
 		printf("realloc: Freeing the space above the shrunk piece (size %zu at %p)\n", new_entry->size, new_entry);
 		#endif
@@ -501,7 +504,7 @@ void* my_realloc(void *p, size_t len)
 	/*	Growing In-place, At the break		*/
 	/****************************************/
 
-	/*Scenario: The expanding piece is at the malloc break*/
+	//If the expanding piece is at the malloc break, simply grow the break to accomodate the new length
 	if(segment_end(p_entry) == malloc_break)
 	{
 		if(!grow_malloc_break(size_diff))
@@ -513,7 +516,7 @@ void* my_realloc(void *p, size_t len)
 		old_entry->size = 0;
 		old_entry->next = NULL;
 		
-		#ifdef DEBUG
+		#ifdef DEBUG_MY_REALLOC
 		printf("realloc: Expanding malloc break to %p for growth\n", malloc_break);
 		#endif
 		
@@ -522,11 +525,7 @@ void* my_realloc(void *p, size_t len)
 	
 	
 	
-	/****************************************/
-	/*	Growing In-place, adjacent right	*/
-	/****************************************/
-	
-	//Iterate the freelist and find the closest free piece on the right to p
+	//Iterate the freelist and find the closest adjacent free pieces to p, if the expanding piece is not at the break
 	for(current_piece = freelist_head; current_piece; current_piece = current_piece->next)
 	{
 		if(current_piece < p_entry)
@@ -547,12 +546,16 @@ void* my_realloc(void *p, size_t len)
 			return NULL;
 		}
 	}
-
 	
-	/*Scenario: The expanding piece has a free chunk directly above itself, and is big enough to merge with*/
+	
+	
+	/****************************************/
+	/*	Growing In-place, adjacent right	*/
+	/****************************************/
+	
 	if(closest_right && segment_end(p_entry) == (uchar*)closest_right)
 	{			
-		//Merging with top piece if it fits exactly (with the header consumed)
+		//Merging with adjacent right piece if it fits exactly (with the header consumed)
 		if(closest_right->size + sizeof(Heap_Seg) == size_diff)
 		{
 			p_entry->size = len;
@@ -567,17 +570,17 @@ void* my_realloc(void *p, size_t len)
 			closest_right->size = 0;
 			closest_right->next = NULL;
 			
-			#ifdef DEBUG
+			#ifdef DEBUG_MY_REALLOC
 			printf("realloc: Merging with adjacent right piece yields exact size. New size %zu at %p\n", p_entry->size, p_entry);
 			#endif
 			
 			return p;
 		}
 		
-		//Merging with top piece yields excess free spaces (with a new header added)
+		//Merging with adjacent right piece yields excess free spaces (with a new header added)
 		else if(closest_right->size > size_diff)
 		{
-			#ifdef DEBUG
+			#ifdef DEBUG_MY_REALLOC
 			printf("realloc: Planning to split adjacent right piece of size %zu at %p for merging\n", closest_right->size, closest_right);
 			#endif
 			
@@ -593,7 +596,7 @@ void* my_realloc(void *p, size_t len)
 			else
 				freelist_head = new_entry;
 			
-			#ifdef DEBUG
+			#ifdef DEBUG_MY_REALLOC
 			printf("realloc: Expanded Piece: size %zu at %p\n", len, p_entry);
 			printf("realloc: Free Piece: size %zu at %p\n", new_entry->size, new_entry);
 			#endif
@@ -615,13 +618,12 @@ void* my_realloc(void *p, size_t len)
 	/*	Growing In-place, adjacent left		*/
 	/****************************************/
 	
-	/*Scenario: The expanding piece has a free chunk directly above itself, and is big enough to merge with*/
 	if(closest_left && segment_end(closest_left) == (uchar*)p_entry)
 	{	
-		//Merging with left piece if it fits exactly (with the header consumed)
+		//Merging with adjacent left piece if it fits exactly (with the header consumed)
 		if(closest_left->size + sizeof(Heap_Seg) == size_diff)
 		{
-			#ifdef DEBUG
+			#ifdef DEBUG_MY_REALLOC
 			printf("realloc: Merging with adjacent left piece yields exact size. New piece at %p, size %zu\n", closest_left, len);
 			#endif
 			
@@ -640,10 +642,10 @@ void* my_realloc(void *p, size_t len)
 			return retaddr;
 		}
 		
-		//Merging with top piece yields excess free spaces (with a new header added)
+		//Merging with adjacent left piece yields excess free spaces (with a new header added)
 		else if(closest_left->size > size_diff + sizeof(Heap_Seg))
 		{
-			#ifdef DEBUG
+			#ifdef DEBUG_MY_REALLOC
 			printf("realloc: Planning to split adjacent left piece of size %zu at %p for merging\n", closest_left->size, closest_left);
 			#endif
 			
@@ -658,7 +660,7 @@ void* my_realloc(void *p, size_t len)
 			memcpy(retaddr, p, p_entry->size);
 			
 			
-			#ifdef DEBUG
+			#ifdef DEBUG_MY_REALLOC
 			printf("realloc: Expanded Piece: size %zu at %p\n", new_entry->size, new_entry);
 			printf("realloc: Free Piece: size %zu at %p\n", closest_left->size, closest_left);
 			#endif
@@ -674,7 +676,7 @@ void* my_realloc(void *p, size_t len)
 	/*		New Allocation for growth		*/
 	/****************************************/
 	
-	#ifdef DEBUG
+	#ifdef DEBUG_MY_REALLOC
 	printf("realloc: Cannot grow in-place. Allocating a new piece using malloc...\n");
 	#endif
 	

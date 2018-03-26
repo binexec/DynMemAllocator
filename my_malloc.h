@@ -11,7 +11,10 @@
 #endif
 
 
-#define DEBUG
+//Enable debug prints
+#define DEBUG_MY_MALLOC
+#define DEBUG_MY_FREE
+#define DEBUG_MY_REALLOC
 
 
 /*
